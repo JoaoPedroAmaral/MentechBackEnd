@@ -7,11 +7,12 @@ import os
 load_dotenv()
 
 def conectar_base_de_dados():
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    ssl_ca_path = os.path.join(base_dir, os.getenv("DB_SSL_CA").replace("backend/", ""))
+    ssl_ca_path = os.getenv("DB_SSL_CA_PATH")
 
+    if not ssl_ca_path:
+        raise ValueError("A variável de ambiente 'DB_SSL_CA_PATH' não foi definida no Render.")
     if not os.path.exists(ssl_ca_path):
-        raise FileNotFoundError(f"Certificado CA não encontrado em: {ssl_ca_path}")
+        raise FileNotFoundError(f"Arquivo de certificado CA não encontrado em: {ssl_ca_path}")
     return mysql.connector.connect(
         host=os.getenv("DB_HOST"),
         user=os.getenv("DB_USER"),
