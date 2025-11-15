@@ -1,0 +1,6 @@
+.env
+.txt
+/Database/ca.pem
+/Controller/__pycache__
+/Database/__pycache__
+/Routes/__pycache__
