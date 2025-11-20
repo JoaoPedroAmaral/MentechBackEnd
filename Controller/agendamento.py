@@ -62,6 +62,7 @@ def criar_agendamento(cd_usuario, cd_paciente, dt_agendamento, hora_inicio, hora
     bd = conectar_base_de_dados()
     cursor = bd.cursor()
     prazos = {"": 1, "1_mes": 4, "6_meses": 24, "1_ano": 48}
+    agendamentos = []
     try:
         if not cd_usuario or not cd_paciente or not dt_agendamento or not hora_inicio:
             return jsonify({"MSG200":enviar_mensagem_negativa("MSG200")}),400
@@ -69,10 +70,10 @@ def criar_agendamento(cd_usuario, cd_paciente, dt_agendamento, hora_inicio, hora
             dt_agendamento = datetime.strptime(dt_agendamento, "%Y-%m-%d")
             if i >= 1:
                 dt_agendamento += timedelta(days=7)  
-                hora_inicio = hora_inicio.strftime("%H:%M")
-                hora_fim = hora_fim.strftime("%H:%M")  
-            hora_inicio = datetime.strptime(hora_inicio, "%H:%M").time()
-            hora_fim = datetime.strptime(hora_fim, "%H:%M").time()
+                hora_inicio = hora_inicio.strftime("%H:%M:%S")
+                hora_fim = hora_fim.strftime("%H:%M:%S")  
+            hora_inicio = datetime.strptime(hora_inicio, "%H:%M:%S").time()
+            hora_fim = datetime.strptime(hora_fim, "%H:%M:%S").time()
             hoje = datetime.strptime(formatar_data(datetime.today()), '%Y-%m-%d')
 
             if dt_agendamento < hoje:
@@ -84,26 +85,27 @@ def criar_agendamento(cd_usuario, cd_paciente, dt_agendamento, hora_inicio, hora
             horarios = cursor.fetchall()
             if hora_inicio >= hora_fim:
                 return jsonify({"MSG248": enviar_mensagem_negativa("MSG248")}),401
-            for hora_ini, hora_fim in horarios:
-                hora_ini = datetime.strptime(hora_ini, "%H:%M").time()
-                hora_fim = datetime.strptime(hora_fim, "%H:%M").time()
+            for hora_ini, hora_f in horarios:
+                hora_ini = datetime.strptime(hora_ini, "%H:%M:%S").time()
+                hora_f = datetime.strptime(hora_f, "%H:%M:%S").time()
                 if hora_inicio >= hora_fim:
                     return jsonify({"MSG248": enviar_mensagem_negativa("MSG248")}),401
-                if (hora_ini <= hora_inicio <= hora_fim) or (hora_inicio == hora_fim) or (hora_inicio == hora_ini):
+                if (hora_ini <= hora_inicio <= hora_f) or (hora_inicio == hora_f) or (hora_inicio == hora_ini):
                     return jsonify({"MSG248": enviar_mensagem_negativa("MSG248")}),401
-                elif (hora_ini <= hora_fim <= hora_fim) or (hora_fim == hora_fim) or (hora_fim == hora_ini):
+                elif (hora_ini <= hora_fim <= hora_f) or (hora_fim == hora_f) or (hora_fim == hora_ini):
                     return jsonify({"MSG249": enviar_mensagem_negativa("MSG249")}),401 
     #------------------FIM DAS REGRAS DE NEGÓCIO DO CREATE----------------------------------------
             sql = "INSERT INTO agendamento(cd_usuario, cd_paciente, dt_agendamento, hora_inicio, hora_fim, comparecimento) VALUES (%s, %s, %s, %s, %s, 'N')"
             cursor.execute(sql, (cd_usuario, cd_paciente, dt_agendamento, hora_inicio, hora_fim))
-            cd_agendamento = cursor.lastrowid     
+            cd_agendamento = cursor.lastrowid
+            agendamentos.append(cd_agendamento)     
             bd.commit()
             #cursor.execute("SELECT nm_paciente FROM paciente WHERE cd_paciente = %s", (cd_paciente,))
             #(nm_paciente,) = cursor.fetchone()
             #adicional = f"Dia {dt_agendamento}, das {hora_inicio} até as {hora_fim} para o paciente {nm_paciente}"
             #registrar_log('CAG', cd_paciente=cd_paciente, ADICIONAL=adicional)
             print("tipo_no_final",type(dt_agendamento))
-        return jsonify({"MSG246":enviar_mensagem_positiva("MSG246"), "cd_agendamento": cd_agendamento}),201
+        return jsonify({"MSG246":enviar_mensagem_positiva("MSG246"), "cd_agendamento(s)": agendamentos}),201
     except Exception as e:
         bd.rollback()
         return jsonify({"error":f"Erro ao criar agendamento: {e}"}), 400
@@ -156,9 +158,9 @@ def atualizar_agendamento(cd_agendamento, cd_usuario, cd_paciente, dt_agendament
         sql = f"UPDATE agendamento SET {', '.join(partes_sql)} WHERE cd_agendamento = {cd_agendamento}"
         cursor.execute(sql, tuple(valores))
         bd.commit()
-        cursor.execute("SELECT nm_paciente FROM paciente WHERE cd_paciente = %s", (cd_paciente,))
-        (nm_paciente, ) = cursor.fetchone()
-        adicional = f"Dia {dt_agendamento}, das {hora_inicio} até as {hora_fim} para o paciente {nm_paciente}"
+        # cursor.execute("SELECT nm_paciente FROM paciente WHERE cd_paciente = %s", (cd_paciente,))
+        # (nm_paciente, ) = cursor.fetchone()
+        # adicional = f"Dia {dt_agendamento}, das {hora_inicio} até as {hora_fim} para o paciente {nm_paciente}"
         #registrar_log('ADAG', cd_paciente=cd_paciente, ADICIONAL=adicional)
         return jsonify({"MSG251":enviar_mensagem_positiva("MSG251"), "cd_agendamento": cd_agendamento}),201
     except Exception as e:
@@ -171,13 +173,13 @@ def deletar_agendamento(cd_agendamento):
     bd = conectar_base_de_dados()
     cursor = bd.cursor()
     try:
-        cursor.execute(f"SELECT cd_paciente, CAST(dt_agendamento AS CHAR) from agendamento WHERE cd_agendamento = {cd_agendamento}")
-        infos = cursor.fetchone()
-        cd_paciente, dt_agendamento = infos[0]
+        # cursor.execute(f"SELECT cd_paciente, CAST(dt_agendamento AS CHAR) from agendamento WHERE cd_agendamento = {cd_agendamento}")
+        # infos = cursor.fetchone()
+        # cd_paciente, dt_agendamento = infos[0]
         sql = "DELETE FROM agendamento WHERE cd_agendamento = %s"
         cursor.execute(sql, (cd_agendamento,))
         bd.commit()
-        adicional = f"Data do atendimento removido {dt_agendamento}"
+        #adicional = f"Data do atendimento removido {dt_agendamento}"
         #registrar_log('RAS', cd_paciente=cd_paciente, ADICIONAL=adicional)
         return jsonify({"MSG252":enviar_mensagem_positiva("MSG252"), "cd_agendamento": cd_agendamento}),201
     except Exception as e:
@@ -200,10 +202,10 @@ def comparecimento_paciente(cd_agendamento):
 
         cursor.execute("UPDATE agendamento SET comparecimento = 'S' WHERE cd_agendamento = %s", (cd_agendamento,))
         bd.commit()
-        cursor.execute(f"SELECT cd_paciente, CAST(dt_agendamento AS CHAR), CAST(hora_inicio AS CHAR), CAST(hora_fim AS CHAR) from agendamento WHERE cd_agendamento = {cd_agendamento}")
-        infos = cursor.fetchone()
-        cd_paciente, dt_agendamento, hora_inicio, hora_fim = infos
-        adicional = f"Data do atendimento {dt_agendamento}, Hora de Inicio {hora_inicio}, suposto fim da sessão {hora_fim}"
+        # cursor.execute(f"SELECT cd_paciente, CAST(dt_agendamento AS CHAR), CAST(hora_inicio AS CHAR), CAST(hora_fim AS CHAR) from agendamento WHERE cd_agendamento = {cd_agendamento}")
+        # infos = cursor.fetchone()
+        # cd_paciente, dt_agendamento, hora_inicio, hora_fim = infos
+        # adicional = f"Data do atendimento {dt_agendamento}, Hora de Inicio {hora_inicio}, suposto fim da sessão {hora_fim}"
         #registrar_log('CCP', cd_paciente=cd_paciente, ADICIONAL=adicional)
         return jsonify({"MSG253": enviar_mensagem_positiva("MSG253")}),201
 

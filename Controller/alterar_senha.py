@@ -50,7 +50,7 @@ def criar_solicitacao(cd_usuario, email_destino):
         # registrar_log_alterar_senha(tipo_log='SAS', cd_usuario=cd_usuario) 
 
         # 3️⃣ Gerar link de redefinição
-        link = f"http://localhost:3000/redefinir-senha/{id_solicitacao}/{cd_usuario}/{token}"
+        link = f"http://mentech.app.br/redefinir-senha/{id_solicitacao}/{cd_usuario}/{token}"
 
         # 4️⃣ Enviar o e-mail
         enviar_email_recuperacao(email_destino, link)
