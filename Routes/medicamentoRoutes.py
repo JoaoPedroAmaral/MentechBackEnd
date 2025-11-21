@@ -19,6 +19,11 @@ def post_medicamento():
     try:
         return criar_medicamento(
             nm_medicamento = data.get('nm_medicamento'),
+            dosagem= data.get('dosagem'),
+            forma_farmaceutica= data.get('forma_farmaceutica'),
+            principio_ativo= data.get('principio_ativo'),
+            fabricante= data.get('fabricante'),
+            cd_paciente= data.get('cd_paciente')
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 400
