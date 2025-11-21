@@ -52,7 +52,7 @@ def criar_medicamento(nm_medicamento, dosagem, forma_farmaceutica, principio_ati
             elif ((len(valor) < 3) or (len(valor) > 100)):
                 return jsonify({"MSG199":enviar_mensagem_negativa("MSG199")}),400
 #------------------FIM DAS REGRAS DE NEGÓCIO DO CREATE----------------------------------------      
-        sql = "INSERT INTO medicamento (nm_medicamento, dosagem, forma_farmaceutica, principio_ativo, fabricante) VALUES (AES_ENCRYPT(%s, %s), %s, %s, AES_ENCRYPT(%s, %s), %s"
+        sql = "INSERT INTO medicamento (nm_medicamento, dosagem, forma_farmaceutica, principio_ativo, fabricante) VALUES (AES_ENCRYPT(%s, %s), %s, %s, AES_ENCRYPT(%s, %s), %s)"
         cursor.execute(sql, (camposG['nm_medicamento'], senha, camposG["dosagem"], camposG["forma_farmaceutica"], camposG["principio_ativo"], senha, camposG["fabricante"]))
         cd_medicamento = cursor.lastrowid
         bd.commit()
