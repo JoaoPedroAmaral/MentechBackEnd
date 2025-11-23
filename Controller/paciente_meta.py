@@ -14,7 +14,6 @@ def formatar_data(data):
             except ValueError:
                 continue
         raise ValueError(f"Formato de data inválido: {data}")
-
     raise TypeError("O parâmetro 'data' deve ser uma string ou date")
 
 
@@ -46,10 +45,10 @@ def criar_paciente_meta(cd_meta, cd_paciente, dt_previsao):
         sql = "INSERT INTO paciente_meta (cd_meta, cd_paciente, dt_previsao, dt_cadastro) VALUES (%s, %s, %s, %s)"
         cursor.execute(sql, (cd_meta, cd_paciente, dt_previsao, date.today()))
         bd.commit()
-        return jsonify({"MSG194":enviar_mensagem_positiva("MSG194"), "cd_meta": cd_meta, "cd_paciente": cd_paciente, "dt_previsao": dt_previsao}),200
+        return jsonify({"MSG271": enviar_mensagem_positiva("MSG271"), "cd_meta": cd_meta, "cd_paciente": cd_paciente, "dt_previsao": dt_previsao}),200
     except Exception as e:
         bd.rollback()
-        return jsonify({"error":f"Erro ao criar a meta: {e}"}),400
+        return jsonify({"error":f"Erro ao criar a relação entre paciente e meta: {e}"}),400
     finally:
         bd.close()
 
@@ -92,10 +91,10 @@ def deletar_paciente_meta(cd_paciente_meta):
         sql = "DELETE FROM paciente_meta WHERE cd_paciente_meta = %s"
         cursor.execute(sql, (cd_paciente_meta,))
         bd.commit()
-        return jsonify({"MSG197":enviar_mensagem_positiva("MSG197")}),201
+        return jsonify({"MSG272": enviar_mensagem_positiva("MSG272")}),201
     except Exception as e:
         bd.rollback()
-        return jsonify({"error":f"Erro ao deletar a meta: {e}"}),400
+        return jsonify({"error":f"Erro ao deletar a relação entre paciente e meta: {e}"}),400
     finally:
         bd.close()
 
@@ -120,7 +119,7 @@ def concluir_meta(cd_paciente_meta):
 
     except Exception as e:
         bd.rollback()
-        return jsonify({"error":f"Erro ao alterar estado da atividade: {e}"}),400
+        return jsonify({"error":f"Erro ao alterar estado da meta: {e}"}),400
 
     finally:
         bd.close()

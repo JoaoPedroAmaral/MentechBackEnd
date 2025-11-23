@@ -1,5 +1,5 @@
 from flask import jsonify, request, Blueprint
-from Controller.paciente import carregar_paciente, criar_paciente, atualizar_paciente, inativar_paciente, carregar_paciente_por_id, carregar_pacientes_por_id_usuario, cadastrar_anamnese, carregar_anamnese_por_id
+from Controller.paciente import carregar_paciente, criar_paciente, atualizar_paciente, inativar_paciente, carregar_paciente_por_id, carregar_pacientes_por_id_usuario, cadastrar_anamnese, carregar_anamnese_por_id, carregar_proximo_paciente
 from datetime import datetime, date
 
 paciente_bp = Blueprint("paciente_bp", __name__)
@@ -34,7 +34,12 @@ def api_carregar_paciente_por_id(cd_paciente):
 @paciente_bp.route('/paciente/por_usuario/<int:cd_usuario>', methods = ['GET'])
 def api_carregar_paciente_por_usuario(cd_usuario):
     pacientes = carregar_pacientes_por_id_usuario(cd_usuario)
-    return jsonify(pacientes)    
+    return jsonify(pacientes)
+
+@paciente_bp.route('/paciente/proximo/<int:cd_usuario>', methods = ['GET'])
+def api_carregar_proximo_paciente(cd_usuario):
+    paciente = carregar_proximo_paciente(cd_usuario)
+    return jsonify(paciente)       
 
 @paciente_bp.route('/paciente', methods = ['POST'])
 def post_paciente():

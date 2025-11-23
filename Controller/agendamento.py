@@ -104,7 +104,6 @@ def criar_agendamento(cd_usuario, cd_paciente, dt_agendamento, hora_inicio, hora
             #(nm_paciente,) = cursor.fetchone()
             #adicional = f"Dia {dt_agendamento}, das {hora_inicio} até as {hora_fim} para o paciente {nm_paciente}"
             #registrar_log('CAG', cd_paciente=cd_paciente, ADICIONAL=adicional)
-            print("tipo_no_final",type(dt_agendamento))
         return jsonify({"MSG246":enviar_mensagem_positiva("MSG246"), "cd_agendamento(s)": agendamentos}),201
     except Exception as e:
         bd.rollback()
@@ -187,6 +186,33 @@ def deletar_agendamento(cd_agendamento):
         return jsonify({"erro": f"Falha ao deletar agendamento: {e}"}), 500
     finally:
         bd.close()
+
+def deletar_agendamento_em_serie(cd_agendamento, prazo):
+    bd = conectar_base_de_dados()
+    cursor = bd.cursor()
+    prazos = {"1_mes": 4, "6_meses": 24, "1_ano": 48}
+    try:
+        cursor.execute("SELECT dt_agendamento, cd_usuario, cd_paciente FROM agendamento WHERE cd_agendamento = %s",(cd_agendamento,))
+        dt_agendamento, cd_usuario, cd_paciente = cursor.fetchone()
+        sql = "DELETE FROM agendamento WHERE dt_agendamento = %s AND cd_usuario = %s and cd_paciente = %s"
+        for i in range (prazos[prazo]):
+            print(dt_agendamento, cd_usuario, cd_paciente)
+            if i >= 1:
+                dt_agendamento = datetime.strftime(dt_agendamento, "%Y-%m-%d")
+                dt_agendamento = datetime.strptime(dt_agendamento, "%Y-%m-%d")
+                dt_agendamento += timedelta(days=7)
+                formatar_data(dt_agendamento) 
+                cursor.execute(sql, (dt_agendamento, cd_usuario, cd_paciente))
+            else:
+                cursor.execute(sql, (dt_agendamento, cd_usuario, cd_paciente))
+        bd.commit()
+        return jsonify({"MSG269": enviar_mensagem_positiva("MSG269")}),201 
+    except Exception as e:
+        bd.rollback()
+        return jsonify({"erro": f"Falha ao deletar agendamento: {e}"}), 500
+    finally:
+        bd.close()
+        
 
 def comparecimento_paciente(cd_agendamento):
     bd = conectar_base_de_dados()
