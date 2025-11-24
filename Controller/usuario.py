@@ -14,6 +14,24 @@ def carregar_usuario():
     bd.close()
     return linhas
 
+def login(email, senha):
+    bd = conectar_base_de_dados()
+    cursor = bd.cursor()
+    try:
+        cursor.execute("SELECT CAST(AES_DECRYPT(senha, %s) AS CHAR) FROM usuario WHERE email = %s", (senha_encrypt, email))
+        senha_correta = cursor.fetchone()
+        bd.close()
+        if senha_correta == None:
+            return jsonify({"MSG274": enviar_mensagem_negativa("MSG274")}),400
+        elif senha_correta[0] == senha:
+            return jsonify({"Resposta": True})
+        else:
+            return jsonify({"Resposta": False})
+    except Exception as e:
+        bd.rollback()
+        return jsonify({"error":f"Erro ao criar usuario: {e}"}),400
+    finally:
+        bd.close()
 
 
 def criar_usuario(nm_usuario, senha, email, cip):
