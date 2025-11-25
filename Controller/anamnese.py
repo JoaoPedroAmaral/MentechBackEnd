@@ -1,6 +1,7 @@
 from flask import jsonify
 from Database.database import conectar_base_de_dados
 from datetime import datetime, date
+from itertools import zip_longest
 from Controller.mensagens import enviar_mensagem_negativa, enviar_mensagem_positiva
 from Controller.log import registrar_log
 
@@ -176,33 +177,33 @@ def gerar_anamnese_por_perfil_do_paciente(cd_perfil, cd_paciente):
 def responder_questoes(cd_questao, cd_anamnese, cd_alternativa=None, txt_resposta=None):
     bd = conectar_base_de_dados()
     cursor = bd.cursor()
-    
-    cursor.execute(f"SELECT tipo_questao FROM questao q LEFT join tipo_questao tq on tq.cd_tipo_questao = q.cd_tipo_questao WHERE q.cd_questao = {cd_questao}")
-    (tipo_questao,) = cursor.fetchone()
-    print(f"tipo_questao: {tipo_questao}, cd_questao: {cd_questao}, txt_questao: {txt_resposta}, cd_alternativa: {cd_alternativa}")
-    if tipo_questao in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
-        for alternativa in cd_alternativa:
-            cursor.execute("INSERT INTO resposta (cd_questao, cd_alternativa) VALUES (%s, %s)", (cd_questao, alternativa))
-            cd_resposta = cursor.lastrowid
-            if alternativa == cd_alternativa[0]:
-                cursor.execute("UPDATE questao_anamnese SET cd_resposta = %s WHERE cd_questao = %s AND cd_anamnese = %s AND cd_resposta IS NULL", (cd_resposta, cd_questao, cd_anamnese))
-            else:
-                cursor.execute("INSERT INTO questao_anamnese (cd_anamnese, cd_questao, cd_resposta) VALUES (%s, %s, %s)", (cd_anamnese, cd_questao, cd_resposta))
-    else:
-        if txt_resposta == None:
-            return jsonify({"MSG200":enviar_mensagem_negativa("MSG200")}),400
+    dicinario_questao = {questao_ep: (alternativa_ep, texto_ep) for questao_ep, alternativa_ep, texto_ep in zip_longest(cd_questao, cd_alternativa, txt_resposta)}
+    for questao, (alternativas, texto_resposta) in dicinario_questao.items():
+        cursor.execute(f"SELECT tipo_questao FROM questao q LEFT join tipo_questao tq on tq.cd_tipo_questao = q.cd_tipo_questao WHERE q.cd_questao = {questao}")
+        (tipo_questao,) = cursor.fetchone()
+        if tipo_questao in ["Múltipla Escolha", "Verdadeiro ou Falso"]:
+            for alternativa in alternativas:
+                cursor.execute("INSERT INTO resposta (cd_questao, cd_alternativa) VALUES (%s, %s)", (questao, alternativa))
+                cd_resposta = cursor.lastrowid
+                if alternativa == alternativas[0]:
+                    cursor.execute("UPDATE questao_anamnese SET cd_resposta = %s WHERE cd_questao = %s AND cd_anamnese = %s AND cd_resposta IS NULL", (cd_resposta, questao, cd_anamnese))
+                else:
+                    cursor.execute("INSERT INTO questao_anamnese (cd_anamnese, cd_questao, cd_resposta) VALUES (%s, %s, %s)", (cd_anamnese, questao, cd_resposta))
         else:
-            txt_resposta = " ".join(str(txt_resposta).split())
-            cursor.execute("INSERT INTO resposta (cd_questao, txt_resposta) VALUES (%s, %s)", (cd_questao, txt_resposta))
-            cd_resposta = cursor.lastrowid
-            cursor.execute("update questao_anamnese set cd_resposta = %s where cd_questao = %s and cd_anamnese = %s", (cd_resposta, cd_questao, cd_anamnese))
-    bd.commit()
-    #cursor.execute(f"SELECT cd_questao_anamnese FROM questao_anamnese WHERE cd_anamnese = {cd_anamnese}")
-    #questao = cursor.fetchall()
-    #cursor.execute("SELECT cd_paciente FROM anamnese WHERE cd_anamnese = %s",(cd_anamnese,))
-    #(cd_paciente,) = cursor.fetchone()
-    #adicional = f"CD_QUESTÃO: {cd_questao}, cd_resposta: {cd_resposta} cd_anamnese: {cd_anamnese}"
-    #registrar_log('CRQ', cd_paciente=cd_paciente, ADICIONAL=adicional)
+            if texto_resposta == None:
+                return jsonify({"MSG200":enviar_mensagem_negativa("MSG200")}),400
+            else:
+                texto_resposta = " ".join(str(texto_resposta).split())
+                cursor.execute("INSERT INTO resposta (cd_questao, txt_resposta) VALUES (%s, %s)", (questao, texto_resposta))
+                cd_resposta = cursor.lastrowid
+                cursor.execute("update questao_anamnese set cd_resposta = %s where cd_questao = %s and cd_anamnese = %s", (cd_resposta, questao, cd_anamnese))
+        bd.commit()
+        #cursor.execute(f"SELECT cd_questao_anamnese FROM questao_anamnese WHERE cd_anamnese = {cd_anamnese}")
+        #questao = cursor.fetchall()
+        #cursor.execute("SELECT cd_paciente FROM anamnese WHERE cd_anamnese = %s",(cd_anamnese,))
+        #(cd_paciente,) = cursor.fetchone()
+        #adicional = f"CD_QUESTÃO: {cd_questao}, cd_resposta: {cd_resposta} cd_anamnese: {cd_anamnese}"
+        #registrar_log('CRQ', cd_paciente=cd_paciente, ADICIONAL=adicional)
     bd.close()
     return jsonify({"MSG242":enviar_mensagem_positiva("MSG242"), "cd_anamnese": cd_anamnese}),201
 

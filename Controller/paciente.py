@@ -10,20 +10,18 @@ senha = os.getenv("CRIPT_PASSWORD")
 tamanhos = {'nm_paciente': 100, 'cid11': 7, 'dt_nasc': 10, 'sexo': 50, 'tip_sang': 50, 'ANAMNESE': 2000}
 
 def formatar_data(data):
-    try:
-        if "-" in data:
-            if len(data.split("-")[0]) == 4: 
-                return data
-            else:
-                formato = "%d-%m-%Y"
+    formato = "%d-%m-%Y"
+    if isinstance(data, date):
+        return data.strftime("%Y-%m-%d")
+    if isinstance(data, str):
+        if "-" in data: 
+            formato = "%d-%m-%Y"
         elif "/" in data:
-            formato = "%d/%m/%Y"
+            data = data.replace("/", "-")
+            formato = "%d-%m-%Y"
         else:
             raise ValueError(f"Formato de data inválido: {data}")
-
-        return datetime.strptime(data, formato).strftime("%Y-%m-%d")
-    except Exception as e:
-        raise ValueError(f"Erro ao converter data '{data}': {e}")
+    return datetime.strptime(data, formato).strftime("%Y-%m-%d")
 
 def adicional_log(cd_paciente):
     bd = conectar_base_de_dados()
@@ -86,6 +84,24 @@ def carregar_paciente_por_id(cd_paciente):
     bd.close()
     return linha
 
+def carregar_proximo_paciente(cd_usuario):
+    bd = conectar_base_de_dados()
+    cursor = bd.cursor()
+    cursor.execute("""
+                   SELECT 
+                        a.cd_paciente
+                   FROM agendamento a  
+                   WHERE a.cd_usuario = %s
+                        AND a.dt_agendamento between current_date() AND DATE_ADD(current_date(), INTERVAL 1 MONTH) 
+                    ORDER BY a.dt_agendamento asc, a.hora_inicio 
+                    LIMIT 1""",(cd_usuario,))
+    paciente = cursor.fetchone()
+    if paciente == None:
+        return False
+    else:
+        return carregar_paciente_por_id(paciente[0])
+    
+
 def carregar_pacientes_por_id_usuario(cd_usuario):
     bd = conectar_base_de_dados()
     cursor = bd.cursor(dictionary=True)
@@ -138,25 +154,27 @@ def criar_paciente(nm_paciente, dt_nasc, sexo, cd_genero, tip_sang, cd_perfil, c
             camposG[campo] = valor
     try:
 #--------------------COMEÇO DAS RNs DO CREATE-----------------------------------
-        dt_nasc = formatar_data(dt_nasc)
+        if ("" or None) in [nm_paciente, dt_nasc, cd_genero, cd_perfil, cd_usuario]:
+            return jsonify({"MSG200":enviar_mensagem_negativa("MSG200")}),400      
         
-        if not nm_paciente or not sexo:
-            return jsonify({"MSG200":enviar_mensagem_negativa("MSG200")}),400
         for campo, valor in list(camposG.items()):
             if valor == "" or valor == None or campo not in tamanhos.keys():
                 continue
             elif ((len(valor) < 3 and campo not in ['sexo', 'tip_sang']) or (len(valor) > tamanhos[campo])):
                 return jsonify({"MSG199":enviar_mensagem_negativa("MSG199")}),400
-#------------------FIM DAS REGRAS DE NEGÓCIO DO CREATE----------------------------------------  
+
+        dt_nasc = formatar_data(dt_nasc)
+#------------------FIM DAS REGRAS DE NEGÓCIO DO CREATE----------------------------------------
+        
         sql = "INSERT INTO paciente(nm_paciente, dt_nasc, sexo, cd_genero, tip_sang, cd_perfil) VALUES (%s,%s,AES_ENCRYPT(%s, %s),%s,AES_ENCRYPT(%s, %s), %s)"
-        cursor.execute(sql, (camposG['nm_paciente'], camposG['dt_nasc'], camposG['sexo'], senha, camposG['cd_genero'], camposG['tip_sang'], senha, camposG['cd_perfil']))
+        cursor.execute(sql, (camposG['nm_paciente'], dt_nasc, camposG['sexo'], senha, camposG['cd_genero'], camposG['tip_sang'], senha, camposG['cd_perfil']))
         bd.commit()
         cd_paciente = cursor.lastrowid
         cursor.execute(f"INSERT INTO usuario_paciente (cd_usuario, cd_paciente) VALUES ({cd_usuario}, {cd_paciente})")
-        adicional = ", ".join(str(valor) for valor in adicional_log(cd_paciente).values())
+        #adicional = ", ".join(str(valor) for valor in adicional_log(cd_paciente).values())
         #registrar_log('CNP', cd_paciente=cd_paciente, ADICIONAL=adicional)
         bd.commit()  
-        return jsonify({"MSG057":enviar_mensagem_positiva("MSG057"),"cd_paciente":cd_paciente, "inseridos": f"{camposG['nm_paciente']}, {camposG['dt_nasc']}, {camposG['sexo']}, {camposG['cd_genero']}, {camposG['tip_sang']}, {camposG['cd_perfil']}"}),201
+        return jsonify({"MSG057":enviar_mensagem_positiva("MSG057"),"cd_paciente":cd_paciente, "inseridos": f"{camposG['nm_paciente']}, {dt_nasc}, {camposG['sexo']}, {camposG['cd_genero']}, {camposG['tip_sang']}, {camposG['cd_perfil']}"}),201
     except Exception as e:
         bd.rollback()
         return jsonify({"error":f"Erro ao criar paciente! {e}"}),400
@@ -203,7 +221,7 @@ def atualizar_paciente(cd_paciente, nm_paciente = None, dt_nascimento = None, se
         if dt_nascimento:
             dt_nascimento = formatar_data(dt_nascimento)
             partes_sql.append("dt_nasc = %s")
-            valores.append(camposG['dt_nascimento'])
+            valores.append(dt_nascimento)
         if sexo:
             partes_sql.append("sexo = AES_ENCRYPT(%s, %s)")
             valores.append(camposG['sexo'])
@@ -222,6 +240,9 @@ def atualizar_paciente(cd_paciente, nm_paciente = None, dt_nascimento = None, se
             return jsonify({"MSG204":enviar_mensagem_negativa("MSG204"), "cd_paciente":cd_paciente}),400
 
 #-----------------------------COMEÇO DAS RNs DO UPDATE----------------------------------------     
+        if ("" or None) in [nm_paciente, dt_nascimento, cd_genero, cd_perfil]:
+            return jsonify({"MSG200":enviar_mensagem_negativa("MSG200")}),400    
+        
         for campo, valor in list(camposG.items())[1:]:
             if valor == "" or valor == None or campo not in tamanhos.keys():
                 continue
@@ -238,20 +259,6 @@ def atualizar_paciente(cd_paciente, nm_paciente = None, dt_nascimento = None, se
         return jsonify({"error":f"Erro ao atualizar paciente {e}"}),400
     finally:
         bd.close()
-        
-# def deletar_paciente(cd_paciente):
-#     bd = conectar_base_de_dados()
-#     cursor = bd.cursor()
-#     try:
-#         sql = "DELETE FROM paciente WHERE cd_paciente = %s"
-#         cursor.execute(sql, (cd_paciente,))
-#         bd.commit()
-#         print("Paciente deletado com sucesso!")
-#     except Exception as e:
-#         bd.rollback()
-#         print(f"Erro ao deletar Paciente: {e}")
-#     finally:
-#         bd.close()
 
 def inativar_paciente(cd_paciente):
     bd = conectar_base_de_dados()

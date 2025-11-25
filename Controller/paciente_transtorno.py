@@ -1,5 +1,6 @@
 from flask import jsonify
 from Database.database import conectar_base_de_dados
+from Controller.mensagens import enviar_mensagem_negativa, enviar_mensagem_positiva
 from datetime import datetime
 
 
@@ -27,13 +28,14 @@ def criar_paciente_transtorno(cd_transtorno, cd_paciente, datas):
     try:
         datas = formatar_data(datetime.today().strftime('%d-%m-%Y'))
             
-        sql = "INSERT INTO paciente_transtorno (cd_transtorno, cd_paciente, datas) VALUES (%s, %s, %s, %s, %s)"
+        sql = "INSERT INTO paciente_transtorno (cd_transtorno, cd_paciente, datas) VALUES (%s, %s, %s)"
         cursor.execute(sql, (cd_transtorno, cd_paciente, datas))
+        cd_paciente_transtorno = cursor.lastrowid
         bd.commit()
-        return jsonify({"Success":"Meta criada com sucesso!"}),201
+        return jsonify({"MSG270": enviar_mensagem_positiva("MSG270"), "cd_paciente_transtorno": cd_paciente_transtorno}),201
     except Exception as e:
         bd.rollback()
-        return jsonify({"error":f"Erro ao criar a meta: {e}"}),400
+        return jsonify({"error":f"Erro ao criar a relação entre paciente e transtorno: {e}"}),400
     finally:
         bd.close()
 
@@ -44,10 +46,10 @@ def deletar_paciente_transtorno(CD_PACIENTE_TRANSTORNO):
         sql = "DELETE FROM paciente_transtorno WHERE CD_PACIENTE_TRANSTORNO = %s"
         cursor.execute(sql, (CD_PACIENTE_TRANSTORNO,))
         bd.commit()
-        return jsonify({"Success":"Meta paciente_transtorno com sucesso!"}),201
+        return jsonify({"MSG271": enviar_mensagem_positiva("MSG271")}),201
     except Exception as e:
         bd.rollback()
-        return jsonify({"error":f"Erro ao deletar a paciente_transtorno: {e}"}),400
+        return jsonify({"error":f"Erro ao deletar a relação entre paciente e transtorno: {e}"}),400
     finally:
         bd.close()
 
@@ -58,9 +60,9 @@ def deletarTodos_paciente_transtorno(cd_transtorno):
         sql = "DELETE FROM paciente_transtorno WHERE cd_transtorno = %s"
         cursor.execute(sql, (cd_transtorno,))
         bd.commit()
-        return jsonify({"Success":"ADICIONAR MSG (de paciente_transtorno deletado com sucesso!)"}),201
+        return jsonify({"MSG271": enviar_mensagem_positiva("MSG271")}),201
     except Exception as e:
         bd.rollback()
-        return jsonify({"error":"Erro ao deletar paciente_transtorno: " + str(e)}),400
+        return jsonify({"error":f"Erro ao deletar a relação entre paciente e transtorno: {e}"}),400
     finally:
         bd.close()
