@@ -1,5 +1,5 @@
 from flask import jsonify, request, Blueprint
-from Controller.agendamento import carregar_agendamentos, carregar_agendamentos_por_id_paciente, carregar_agendamentos_por_id_usuario, criar_agendamento, deletar_agendamento, atualizar_agendamento, comparecimento_paciente
+from Controller.agendamento import carregar_agendamentos, carregar_agendamentos_por_id_paciente, carregar_agendamentos_por_id_usuario, criar_agendamento, deletar_agendamento, atualizar_agendamento, comparecimento_paciente, deletar_agendamento_em_serie
 
 agendamento_bp = Blueprint("agendamento_bp", __name__)
 
@@ -47,3 +47,11 @@ def put_comparecimento_paciente(id):
 @agendamento_bp.route('/agendamento/<int:id>', methods=['DELETE'])
 def deletar_agendamento_fim(id):
     return deletar_agendamento(id)
+
+@agendamento_bp.route('/agendamento/em_serie', methods=['DELETE'])
+def deletar_agendamento_em_serie_fim():
+    data = request.json
+    return deletar_agendamento_em_serie(
+        cd_agendamento = data.get('cd_agendamento'), 
+        prazo = data.get('prazo')
+                             )

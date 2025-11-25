@@ -11,7 +11,14 @@ senha = os.getenv("CRIPT_PASSWORD")
 def carregar_medicamento():
     bd = conectar_base_de_dados()
     cursor = bd.cursor(dictionary=True)
-    cursor.execute("SELECT cd_medicamento, CAST(AES_DECRYPT(nm_medicamento, %s) AS CHAR) AS nm_medicamento FROM medicamento", (senha,))
+    cursor.execute("""SELECT 
+	cd_medicamento, 
+	CAST(AES_DECRYPT(nm_medicamento, %s) AS CHAR) AS nm_medicamento,
+	dosagem,
+	forma_farmaceutica,
+	CAST(AES_DECRYPT(principio_ativo, %s) AS CHAR) AS principio_ativo,
+	fabricante
+FROM medicamento""", (senha, senha))
     linhas = cursor.fetchall()
     bd.close()
     return linhas
@@ -19,7 +26,20 @@ def carregar_medicamento():
 def carregar_medicamento_porIdPaciente(cd_paciente):
     bd = conectar_base_de_dados()
     cursor = bd.cursor(dictionary=True)
-    cursor.execute("SELECT med.cd_medicamento, CAST(AES_DECRYPT(med.nm_medicamento, %s) AS CHAR) AS nm_medicamento, pmed.dias_ministracao, pmed.dose, CAST(pmed.datas as CHAR) as datas FROM medicamento med LEFT JOIN paciente_medicamento pmed ON pmed.cd_medicamento = med.cd_medicamento WHERE cd_paciente = %s", (senha, cd_paciente))
+    cursor.execute("""SELECT 
+	med.cd_medicamento,
+	med.dosagem,
+	med.forma_farmaceutica,
+	CAST(AES_DECRYPT(med.principio_ativo, %s) AS CHAR) AS principio_ativo,
+	med.fabricante,
+	CAST(AES_DECRYPT(med.nm_medicamento, %s) AS CHAR) AS nm_medicamento, 
+	pmed.dias_ministracao, 
+	pmed.dose, 
+    pmed.cd_paciente
+FROM medicamento med 
+	LEFT JOIN paciente_medicamento pmed 
+		ON pmed.cd_medicamento = med.cd_medicamento 
+WHERE cd_paciente = %s""", (senha, senha, cd_paciente))
     linhas = cursor.fetchall()
     bd.close()
     return linhas
